@@ -18,40 +18,51 @@ CREATE EXTENSION IF NOT EXISTS "pg_cron";   -- job scheduling (Supabase built-in
 
 -- ============================================================
 -- SECTION 2: ENUM TYPES
+-- Each type is created inside a DO block that silently skips if
+-- the type already exists (duplicate_object = SQLSTATE 42710).
+-- This makes the script safe to re-run on an existing database.
 -- ============================================================
 
--- Project lifecycle states
-CREATE TYPE project_status AS ENUM (
-  'idea',
-  'active',
-  'paused',
-  'shipped',
-  'abandoned'
-);
+DO $$ BEGIN
+  CREATE TYPE project_status AS ENUM (
+    'idea',
+    'active',
+    'paused',
+    'shipped',
+    'abandoned'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- Types of events that can occur on a project's timeline
-CREATE TYPE project_event_type AS ENUM (
-  'launch',
-  'feature',
-  'pivot',
-  'revenue_milestone',
-  'status_change',
-  'note'
-);
+DO $$ BEGIN
+  CREATE TYPE project_event_type AS ENUM (
+    'launch',
+    'feature',
+    'pivot',
+    'revenue_milestone',
+    'status_change',
+    'note'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- How a thought entry was created
-CREATE TYPE thought_source AS ENUM (
-  'manual',
-  'rss',
-  'twitter_rss'
-);
+DO $$ BEGIN
+  CREATE TYPE thought_source AS ENUM (
+    'manual',
+    'rss',
+    'twitter_rss'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- Health state of an RSS source connection
-CREATE TYPE rss_source_status AS ENUM (
-  'active',
-  'paused',
-  'error'
-);
+DO $$ BEGIN
+  CREATE TYPE rss_source_status AS ENUM (
+    'active',
+    'paused',
+    'error'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 
 -- ============================================================
@@ -289,7 +300,8 @@ CREATE TABLE thoughts (
   content       TEXT            NOT NULL,
   source        thought_source  NOT NULL DEFAULT 'manual',
   -- Set when this thought was auto-created from an RSS item.
-  rss_item_id   UUID            REFERENCES rss_items(id) ON DELETE SET NULL,
+  -- FK to rss_items added via ALTER TABLE below (rss_items is defined in Section 6).
+  rss_item_id   UUID,
   -- The canonical timestamp for this thought (when it was written/published).
   occurred_at   TIMESTAMPTZ     NOT NULL DEFAULT now(),
   is_backdated  BOOLEAN         NOT NULL DEFAULT false,
@@ -435,6 +447,12 @@ CREATE TABLE rss_items (
 CREATE INDEX idx_rss_items_source      ON rss_items (rss_source_id);
 CREATE INDEX idx_rss_items_user        ON rss_items (user_id);
 CREATE INDEX idx_rss_items_published   ON rss_items (published_at DESC);
+
+-- Deferred FK: thoughts.rss_item_id → rss_items.id
+-- Defined here because rss_items must exist before this constraint can be added.
+ALTER TABLE thoughts
+  ADD CONSTRAINT fk_thoughts_rss_item
+  FOREIGN KEY (rss_item_id) REFERENCES rss_items(id) ON DELETE SET NULL;
 
 
 -- ============================================================
