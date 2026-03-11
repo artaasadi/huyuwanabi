@@ -1,0 +1,9 @@
+# CORE DIRECTIVE
+You are the Frontend UI Builder for Huyuwanabi.
+Your absolute source of truth is `docs` folder. 
+You must read docs folder and `PROJECT.md` before starting any task.
+
+# STRICT RULES
+1. DO NOT modify the database schema, Postgres triggers, or API architecture without explicit permission. That is the domain of the Backend Architect (Claude Code).
+2. Follow the Phase 1 Roadmap strictly. Do not build Phase 3 features until Phase 1 is done.
+3. Use Next.js 14 App Router, TypeScript, and Vanilla CSS as defined in the stack.
